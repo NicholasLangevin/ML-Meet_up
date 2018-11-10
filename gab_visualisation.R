@@ -48,11 +48,12 @@ plot(pca.import$importance[3,])
 k <- sample(1:nrow(dat.pca),0.7 * nrow(dat.pca), replace = F)
 
 f1_score <- matrix(NA, nrow = length(importance), ncol = length(treshold))
-colnames(f1_score) <- treshold
-rownames(f1_score) <- importance
+
 
 calcul_f1 <- function(importance, treshold)
 {
+  colnames(f1_score) <- treshold
+  rownames(f1_score) <- importance
   for (i in seq_along(importance))
   {
     for (j in seq_along(treshold))
@@ -78,27 +79,39 @@ calcul_f1 <- function(importance, treshold)
       
       f1_score[i,j] <- 2 * (precision * recall) / (precision + recall)
     }
-    f1_score
+    
   }
+  f1_score
 }
+
 
 importance <- c(seq(0.5, 0.9, 0.1), 0.95)
 treshold <- seq(0.15, 0.4, 0.05)
 calcul_f1(importance, treshold)
 
+## 
 importance <- c(seq(0.5, 0.9, 0.1), 0.95)
 treshold <- seq(0.15, 0.2, 0.01)
 calcul_f1(importance, treshold)
 
+##
+importance <- c(seq(0.5, 0.9, 0.1), 0.95)
+treshold <- seq(0.15, 0.2, 0.01)
+
+## modèle avec meilleur F1_score : 
+treshold_final <- 0.17
+importance_final <- 0.8
+f1_final <- 0.387931
 
 
 
-write.csv(f1_score, "f1_score.csv")
 
-data.frame(f1_score, precision, recall)
+## 
+dat.pca_final <- data.frame(Ind = toitvert$green_roof_ind,
+                      pca.x[, which(pca.summary$importance[3,] <= 0.8)])
+mod_final <- glm(Ind~., data = dat.pca_final, family = binomial(link = 'logit'))
 
-
-mod.final <- glm(as.formula(mod.str), data = dat.pca, family = binomial(link = 'logit'))
+plot(mod_final$fitted.values, toitvert$green_roof_ind)
 
 
 
