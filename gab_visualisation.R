@@ -38,8 +38,6 @@ pca.summary <- summary(pca.model)
 plot(pca.import$importance[3,])
 
 
-## Définition des seuils
-
 
 
 
@@ -103,15 +101,20 @@ treshold_final <- 0.17
 importance_final <- 0.8
 f1_final <- 0.387931
 
-
-
-
-## 
 dat.pca_final <- data.frame(Ind = toitvert$green_roof_ind,
                       pca.x[, which(pca.summary$importance[3,] <= 0.8)])
 mod_final <- glm(Ind~., data = dat.pca_final, family = binomial(link = 'logit'))
 
-plot(mod_final$fitted.values, toitvert$green_roof_ind)
+
+conf_mat_final <- confusionMatrixFor_Neg1_0_1(dat.pca_final$Ind,
+                                              mod_final$fitted.values)
+
+valid$Pred <- predict(train.mod, newdata = valid, type = 'response')
+valid$validbin <- ifelse(valid$Pred >= treshold_final, 1, 0)
+
+length(dat.pca_final$Ind)
+length(mod_final$fitted.values)
+confusion_mat / length(mod_final$fitted.values)
 
 
 
