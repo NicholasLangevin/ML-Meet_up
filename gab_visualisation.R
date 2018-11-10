@@ -42,46 +42,48 @@ plot(pca.import$importance[3,])
 seuil <- c(seq(0.1, 0.9, 0.1), seq(0.91, 0.99, 0.01))
 treshold <- seq(0.15, 0.4, 0.01)
 
+seuil <- c(0.1, 0.3, 0.5)
+treshold <- c(0.15, 0.2, 0.22)
+
 
 
 ## Séparation des données d'entrainement
 k <- sample(1:nrow(dat.pca),0.7 * nrow(dat.pca), replace = F)
 train <- dat.pca[k,]
 valid <- dat.pca[-k,]
+f1_score <- matrix(NA, nrow = length(seuil), ncol = length(treshold))
 
-for (i in length(seuil))
+
+for (i in seq_along(seuil))
 {
-  dat.pca <- data.frame(Ind = toitvert$green_roof_ind,
-                        pca.x[, which(pca.summary$importance[3,] <= seuil[i])])
-  model.str <- 'Ind~.'
-  model.pca <- glm(as.formula(mod.str), data = dat.pca, family = binomial(link = 'logit'))
-  summary(model.pca) ; anova(model.pca)
-  
-  train.mod <- glm(as.formula(mod.str), data = train, family = binomial(link = 'logit'))
-  
+  for (j in seq_along(treshold))
+  {
+    dat.pca <- data.frame(Ind = toitvert$green_roof_ind,
+                          pca.x[, which(pca.summary$importance[3,] <= seuil[i])])
+    model.pca <- glm(Ind~., data = dat.pca, family = binomial(link = 'logit'))
+    summary(model.pca) ; anova(model.pca)
+    
+    train.mod <- glm(Ind~., data = train, family = binomial(link = 'logit'))
+    
+    ## Calcul des prédictions et de la conversion
+    valid$Pred <- predict(train.mod, newdata = valid, type = 'response')
+    valid$validbin <- ifelse(valid$Pred >= treshold[j], 1, 0)
+    
+    ## Générer la matrice des confusions et calculer les statistiques pertinentes
+    confusion_mat <- confusionMatrixFor_Neg1_0_1(valid$Ind, valid$validbin)[-1,-1]
+    precision <- confusion_mat[2,2] / sum(confusion_mat[,2])
+    recall <- confusion_mat[2,2] / sum(confusion_mat[2,])
+    
+    f1_score[i,j] <- 2 * (precision * recall) / (precision + recall)
+  }
   
 }
+f1_score
 
 
 
 
 
-
-
-
-
-valid$Pred <- predict(train.mod, newdata = valid, type = 'response')
-valid$validbin <- ifelse(valid$Pred >= treshold, 1, 0)
-
-
-
-summary(valid$Pred)
-
-(mat <- confusionMatrixFor_Neg1_0_1(valid$Ind, valid$validbin)[-1,-1])
-
-precision <- mat[2,2] / sum(mat[,2])
-recall <- mat[2,2] / sum(mat[2,])
-f1_score <- 2 * (precision * recall) / (precision + recall)
 data.frame(f1_score, precision, recall)
 
 
