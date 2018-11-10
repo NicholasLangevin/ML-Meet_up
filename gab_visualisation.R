@@ -39,11 +39,8 @@ plot(pca.import$importance[3,])
 
 
 ## Définition des seuils
-importance <- c(seq(0.1, 0.9, 0.1), seq(0.91, 0.99, 0.01))
-treshold <- seq(0.15, 0.4, 0.01)
 
-importance <- c(0.1, 0.3, 0.5)
-treshold <- c(0.15, 0.2, 0.22)
+
 
 
 
@@ -51,40 +48,52 @@ treshold <- c(0.15, 0.2, 0.22)
 k <- sample(1:nrow(dat.pca),0.7 * nrow(dat.pca), replace = F)
 
 f1_score <- matrix(NA, nrow = length(importance), ncol = length(treshold))
+colnames(f1_score) <- treshold
+rownames(f1_score) <- importance
 
-
-for (i in seq_along(importance))
+calcul_f1 <- function(importance, treshold)
 {
-  for (j in seq_along(treshold))
+  for (i in seq_along(importance))
   {
-    dat.pca <- data.frame(Ind = toitvert$green_roof_ind,
-                          pca.x[, which(pca.summary$importance[3,] <= importance[i])])
-    model.pca <- glm(Ind~., data = dat.pca, family = binomial(link = 'logit'))
-    # summary(model.pca) ; anova(model.pca)
-    train <- dat.pca[k,]
-    valid <- dat.pca[-k,]
-    
-    
-    train.mod <- glm(Ind~., data = train, family = binomial(link = 'logit'))
-    
-    ## Calcul des prédictions et de la conversion
-    valid$Pred <- predict(train.mod, newdata = valid, type = 'response')
-    valid$validbin <- ifelse(valid$Pred >= treshold[j], 1, 0)
-    
-    ## Générer la matrice des confusions et calculer les statistiques pertinentes
-    confusion_mat <- confusionMatrixFor_Neg1_0_1(valid$Ind, valid$validbin)[-1,-1]
-    precision <- confusion_mat[2,2] / sum(confusion_mat[,2])
-    recall <- confusion_mat[2,2] / sum(confusion_mat[2,])
-    
-    f1_score[i,j] <- 2 * (precision * recall) / (precision + recall)
+    for (j in seq_along(treshold))
+    {
+      dat.pca <- data.frame(Ind = toitvert$green_roof_ind,
+                            pca.x[, which(pca.summary$importance[3,] <= importance[i])])
+      model.pca <- glm(Ind~., data = dat.pca, family = binomial(link = 'logit'))
+      # summary(model.pca) ; anova(model.pca)
+      train <- dat.pca[k,]
+      valid <- dat.pca[-k,]
+      
+      
+      train.mod <- glm(Ind~., data = train, family = binomial(link = 'logit'))
+      
+      ## Calcul des prédictions et de la conversion
+      valid$Pred <- predict(train.mod, newdata = valid, type = 'response')
+      valid$validbin <- ifelse(valid$Pred >= treshold[j], 1, 0)
+      
+      ## Générer la matrice des confusions et calculer les statistiques pertinentes
+      confusion_mat <- confusionMatrixFor_Neg1_0_1(valid$Ind, valid$validbin)[-1,-1]
+      precision <- confusion_mat[2,2] / sum(confusion_mat[,2])
+      recall <- confusion_mat[2,2] / sum(confusion_mat[2,])
+      
+      f1_score[i,j] <- 2 * (precision * recall) / (precision + recall)
+    }
+    f1_score
   }
-  
 }
-f1_score
+
+importance <- c(seq(0.5, 0.9, 0.1), 0.95)
+treshold <- seq(0.15, 0.4, 0.05)
+calcul_f1(importance, treshold)
+
+importance <- c(seq(0.5, 0.9, 0.1), 0.95)
+treshold <- seq(0.15, 0.2, 0.01)
+calcul_f1(importance, treshold)
 
 
 
 
+write.csv(f1_score, "f1_score.csv")
 
 data.frame(f1_score, precision, recall)
 
