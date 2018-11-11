@@ -1,53 +1,34 @@
-# pour PCA on installe ggbiplot
-# install.packages("ggbiplot")
+## Hackaton Meet-up machine learning - 10 novembre 2018
+## Gabriel Crépeault-Cauchon
+## Alexandre Gagnon
+## Nicholas Langevin
 
+
+## Packages nécessaires ####
 library(heuristica)
-library(dplyr)
-setwd("Desktop/data/")
-raw.data <- read.csv("train-features.csv", header = T)
-toitvert <- read.csv("data-id-train.csv")
+library(rstudioapi)
+
+## Place le work directory pour n'importe quel ordinateur 
+setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+
+## Importation des données
+raw.data <- read.csv("data/train-features.csv", header = T)
+toitvert <- read.csv("data/data-id-train.csv")
 dat <- cbind(toitvert, raw.data[,-1])
 
-# Exploration des données
-
-  
-
-glm.models <- function(str)
-{
-    mod <- list()
-    glm.formula <- as.formula(paste0('green_roof_ind~', str))
-    mod$logit <- glm(glm.formula, data = data, family = binomial('logit'))
-    mod$cauchit <- glm(glm.formula, data = data, family = binomial('cauchit'))
-    mod$probit <- glm(glm.formula, data = data, family = binomial('probit'))
-    mod$log <- glm(glm.formula, data = data, family = binomial('log'))
-    mod$inverse <- glm(glm.formula, data = data, family = binomial('inverse'))
-    
-    # résultat
-    sapply(mod, function(x) summary(x))
-}
-
-## Cross-validation
-
-
-#  PCA MODEL
+#  On retire l'identifiant et l'indicateur des toits vers pour calculer les PCAs
 pca.model <- prcomp(dat[,-c(1,2)])
 pca.x <- pca.model$x
 pca.summary <- summary(pca.model)
 
+## Visualisation de la variance cumulative des variables explicatives
+plot(pca.summary$importance[3,])
 
-plot(pca.import$importance[3,])
-
-
-
-
-
-
-## Séparation des données d'entrainement
-k <- sample(1:nrow(dat.pca),0.7 * nrow(dat.pca), replace = F)
-
+## Séparation des données d'entrainement et de validation
+k <- sample(1:nrow(pca.x),0.7 * nrow(pca.x), replace = F)
 f1_score <- matrix(NA, nrow = length(importance), ncol = length(treshold))
 
-
+## Fonction qui calcul les f1 score pour des vecteurs d'importance et de treshold
 calcul_f1 <- function(importance, treshold)
 {
   colnames(f1_score) <- treshold
@@ -56,6 +37,7 @@ calcul_f1 <- function(importance, treshold)
   {
     for (j in seq_along(treshold))
     {
+      
       dat.pca <- data.frame(Ind = toitvert$green_roof_ind,
                             pca.x[, which(pca.summary$importance[3,] <= importance[i])])
       model.pca <- glm(Ind~., data = dat.pca, family = binomial(link = 'logit'))
@@ -82,40 +64,37 @@ calcul_f1 <- function(importance, treshold)
   f1_score
 }
 
-
+## Tests pour différentes valeur d'importance et de treshold
 importance <- c(seq(0.5, 0.9, 0.1), 0.95)
 treshold <- seq(0.15, 0.4, 0.05)
 calcul_f1(importance, treshold)
 
-## 
+## On réduit les intervalles tester
 importance <- c(seq(0.5, 0.9, 0.1), 0.95)
 treshold <- seq(0.15, 0.2, 0.01)
 calcul_f1(importance, treshold)
 
-##
-importance <- c(seq(0.5, 0.9, 0.1), 0.95)
-treshold <- seq(0.15, 0.2, 0.01)
-
-## modèle avec meilleur F1_score : 
+## modèle avec meilleur F1_score selon la dernière matrice produite: 
 treshold_final <- 0.17
 importance_final <- 0.8
 f1_final <- 0.387931
 
 dat.pca_final <- data.frame(Ind = toitvert$green_roof_ind,
-                      pca.x[, which(pca.summary$importance[3,] <= 0.8)])
+                      pca.x[, which(pca.summary$importance[3,] <= importance_final)])
 mod_final <- glm(Ind~., data = dat.pca_final, family = binomial(link = 'logit'))
 
-
+predictions_final <- ifelse(mod_final$fitted.values>= treshold_final, 1, 0)
 conf_mat_final <- confusionMatrixFor_Neg1_0_1(dat.pca_final$Ind,
-                                              mod_final$fitted.values)
+                                              predictions_final)
 
-valid$Pred <- predict(train.mod, newdata = valid, type = 'response')
-valid$validbin <- ifelse(valid$Pred >= treshold_final, 1, 0)
 
-length(dat.pca_final$Ind)
-length(mod_final$fitted.values)
-confusion_mat / length(mod_final$fitted.values)
 
+
+
+conf_mat_final[-1,-1] / length(mod_final$fitted.values)
+
+## Sauvgarde de l'environement de travail pour le shiny app
+save(list = ls(all.names = TRUE), file = "environement")
 
 
 
